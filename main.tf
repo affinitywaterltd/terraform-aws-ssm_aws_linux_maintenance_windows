@@ -19,43 +19,9 @@ resource "aws_ssm_maintenance_window_target" "default" {
   description = "default"
   resource_type = "INSTANCE"
   
-
   targets {
     key    = "tag:ssmMaintenanceWindow"
     values = ["${var.weeks > 1 ? "${var.type}_linux_week-${count.index+1}_${var.day}_${var.hour}00" : "${var.type}_linux_week-${var.week}_${var.day}_${var.hour}00"}"]
-  }
-}
-
-resource "aws_ssm_maintenance_window_task" "default_task_ssmagent" {
-  count            = "${var.weeks}"
-  window_id        = "${element(aws_ssm_maintenance_window.default.*.id, count.index)}"
-  name             = "update_ssm_agent"
-  description      = "Update SSM Agent"
-  task_type        = "RUN_COMMAND"
-  task_arn         = "AWS-UpdateSSMAgent"
-  priority         = 40
-  service_role_arn = "${var.role}"
-  max_concurrency  = "${var.mw_concurrency}"
-  max_errors       = "${var.mw_error_rate}"
-
-  logging_info {
-      s3_bucket_name = "${var.s3_bucket}"
-      s3_region = "${var.region}"
-      s3_bucket_prefix = "${var.weeks > 1 ? "${var.type}_linux_week-${count.index+1}_${var.day}_${var.hour}00/${var.account}-${var.environment}" : "${var.type}_linux_week-${var.week}_${var.day}_${var.hour}00/${var.account}-${var.environment}" }"
-  }
-
-  targets {
-    key    = "WindowTargetIds"
-    values = ["${element(aws_ssm_maintenance_window_target.default.*.id, count.index)}"]
-  }
-
-  task_parameters {
-    name   = "allowDowngrade"
-    values = ["false"]
-  }
-
-  lifecycle {
-    ignore_changes = ["task_parameters"]
   }
 }
 
@@ -66,33 +32,32 @@ resource "aws_ssm_maintenance_window_task" "default_task_ena_update" {
   description      = "Installs AwsEnaNetworkDriver for snapshotting"
   task_type        = "RUN_COMMAND"
   task_arn         = "AWS-ConfigureAWSPackage"
-  priority         = 45
+  priority         = 10
   service_role_arn = "${var.role}"
   max_concurrency  = "${var.mw_concurrency}"
   max_errors       = "${var.mw_error_rate}"
-
-  logging_info {
-      s3_bucket_name = "${var.s3_bucket}"
-      s3_region = "${var.region}"
-      s3_bucket_prefix = "${var.weeks > 1 ? "${var.type}_linux_week-${count.index+1}_${var.day}_${var.hour}00/${var.account}-${var.environment}" : "${var.type}_linux_week-${var.week}_${var.day}_${var.hour}00/${var.account}-${var.environment}" }"
-  }
 
   targets {
     key    = "WindowTargetIds"
     values = ["${element(aws_ssm_maintenance_window_target.default.*.id, count.index)}"]
   }
 
-  task_parameters {
-    name   = "action"
-    values = ["Install"]
-  }
-  task_parameters {
-    name   = "name"
-    values = ["AwsEnaNetworkDriver"]
-  }
+  task_invocation_parameters {
+    run_command_parameters {
+      output_s3_bucket = "${var.s3_bucket}"
+      output_s3_key_prefix = "${var.weeks > 1 ? "${var.type}_week-${count.index+1}_${var.day}_${var.hour}00/${var.account}-${var.environment}" : "${var.type}_week-${var.week}_${var.day}_${var.hour}00/${var.account}-${var.environment}" }"
+      service_role_arn = "${var.role}"
+      timeout_seconds  = 300
 
-  lifecycle {
-    ignore_changes = ["task_parameters"]
+      parameter {
+        name   = "action"
+        values = ["Install"]
+      }
+      parameter {
+        name   = "name"
+        values = ["AwsEnaNetworkDriver"]
+      }
+    }
   }
 }
 
@@ -103,33 +68,32 @@ resource "aws_ssm_maintenance_window_task" "default_task_pvdriver_update" {
   description      = "Installs AWSPVDriver for snapshotting"
   task_type        = "RUN_COMMAND"
   task_arn         = "AWS-ConfigureAWSPackage"
-  priority         = 50
+  priority         = 20
   service_role_arn = "${var.role}"
   max_concurrency  = "${var.mw_concurrency}"
   max_errors       = "${var.mw_error_rate}"
-
-  logging_info {
-      s3_bucket_name = "${var.s3_bucket}"
-      s3_region = "${var.region}"
-      s3_bucket_prefix = "${var.weeks > 1 ? "${var.type}_linux_week-${count.index+1}_${var.day}_${var.hour}00/${var.account}-${var.environment}" : "${var.type}_linux_week-${var.week}_${var.day}_${var.hour}00/${var.account}-${var.environment}" }"
-  }
 
   targets {
     key    = "WindowTargetIds"
     values = ["${element(aws_ssm_maintenance_window_target.default.*.id, count.index)}"]
   }
 
-  task_parameters {
-    name   = "action"
-    values = ["Install"]
-  }
-  task_parameters {
-    name   = "name"
-    values = ["AWSPVDriver"]
-  }
+  task_invocation_parameters {
+    run_command_parameters {
+      output_s3_bucket = "${var.s3_bucket}"
+      output_s3_key_prefix = "${var.weeks > 1 ? "${var.type}_week-${count.index+1}_${var.day}_${var.hour}00/${var.account}-${var.environment}" : "${var.type}_week-${var.week}_${var.day}_${var.hour}00/${var.account}-${var.environment}" }"
+      service_role_arn = "${var.role}"
+      timeout_seconds  = 300
 
-  lifecycle {
-    ignore_changes = ["task_parameters"]
+      parameter {
+        name   = "action"
+        values = ["Install"]
+      }
+      parameter {
+        name   = "name"
+        values = ["AWSPVDriver"]
+      }
+    }
   }
 }
 
@@ -140,29 +104,28 @@ resource "aws_ssm_maintenance_window_task" "default_task_updates" {
   description      = "Install YUM Updates"
   task_type        = "RUN_COMMAND"
   task_arn         = "AWS-RunShellScript"
-  priority         = 60
+  priority         = 30
   service_role_arn = "${var.role}"
   max_concurrency  = "${var.mw_concurrency}"
   max_errors       = "${var.mw_error_rate}"
-
-  logging_info {
-      s3_bucket_name = "${var.s3_bucket}"
-      s3_region = "${var.region}"
-      s3_bucket_prefix = "${var.weeks > 1 ? "${var.type}_linux_week-${count.index+1}_${var.day}_${var.hour}00/${var.account}-${var.environment}" : "${var.type}_linux_week-${var.week}_${var.day}_${var.hour}00/${var.account}-${var.environment}" }"
-  }
 
   targets {
     key    = "WindowTargetIds"
     values = ["${element(aws_ssm_maintenance_window_target.default.*.id, count.index)}"]
   }
 
-  task_parameters {
-    name   = "commands"
-    values = ["sudo yum update-minimal -y --security --exclude=kernel*,mongo*,elastic*"]
-  }
+  task_invocation_parameters {
+    run_command_parameters {
+      output_s3_bucket = "${var.s3_bucket}"
+      output_s3_key_prefix = "${var.weeks > 1 ? "${var.type}_week-${count.index+1}_${var.day}_${var.hour}00/${var.account}-${var.environment}" : "${var.type}_week-${var.week}_${var.day}_${var.hour}00/${var.account}-${var.environment}" }"
+      service_role_arn = "${var.role}"
+      timeout_seconds  = 10800
 
-  lifecycle {
-    ignore_changes = ["task_parameters"]
+      parameter {
+        name   = "commands"
+        values = ["sudo yum update-minimal -y --security --exclude=kernel*,mongo*,elastic*"]
+      }
+    }
   }
 }
 
@@ -174,23 +137,54 @@ resource "aws_ssm_maintenance_window_task" "default_task_email_notification" {
   description      = "Send email notification"
   task_type        = "RUN_COMMAND"
   task_arn         = "AWL-SSMEmailNotification"
-  priority         = 80
+  priority         = 40
   service_role_arn = "${var.role}"
   max_concurrency  = "${var.mw_concurrency}"
   max_errors       = "${var.mw_error_rate}"
-
-  logging_info {
-      s3_bucket_name = "${var.s3_bucket}"
-      s3_region = "${var.region}"
-      s3_bucket_prefix = "${var.weeks > 1 ? "${var.type}_linux_week-${count.index+1}_${var.day}_${var.hour}00/${var.account}-${var.environment}" : "${var.type}_linux_week-${var.week}_${var.day}_${var.hour}00/${var.account}-${var.environment}" }"
-  }
 
   targets {
     key    = "WindowTargetIds"
     values = ["${element(aws_ssm_maintenance_window_target.default.*.id, count.index)}"]
   }
 
-  lifecycle {
-    ignore_changes = ["task_parameters"]
+  task_invocation_parameters {
+    run_command_parameters {
+      output_s3_bucket = "${var.s3_bucket}"
+      output_s3_key_prefix = "${var.weeks > 1 ? "${var.type}_week-${count.index+1}_${var.day}_${var.hour}00/${var.account}-${var.environment}" : "${var.type}_week-${var.week}_${var.day}_${var.hour}00/${var.account}-${var.environment}" }"
+      service_role_arn = "${var.role}"
+      timeout_seconds  = 300
+    }
+  }
+}
+
+resource "aws_ssm_maintenance_window_task" "default_task_ssmagent" {
+  count            = "${var.weeks}"
+  window_id        = "${element(aws_ssm_maintenance_window.default.*.id, count.index)}"
+  name             = "update_ssm_agent"
+  description      = "Update SSM Agent"
+  task_type        = "RUN_COMMAND"
+  task_arn         = "AWS-UpdateSSMAgent"
+  priority         = 50
+  service_role_arn = "${var.role}"
+  max_concurrency  = "${var.mw_concurrency}"
+  max_errors       = "${var.mw_error_rate}"
+
+  targets {
+    key    = "WindowTargetIds"
+    values = ["${element(aws_ssm_maintenance_window_target.default.*.id, count.index)}"]
+  }
+
+  task_invocation_parameters {
+    run_command_parameters {
+      output_s3_bucket = "${var.s3_bucket}"
+      output_s3_key_prefix = "${var.weeks > 1 ? "${var.type}_week-${count.index+1}_${var.day}_${var.hour}00/${var.account}-${var.environment}" : "${var.type}_week-${var.week}_${var.day}_${var.hour}00/${var.account}-${var.environment}" }"
+      service_role_arn = "${var.role}"
+      timeout_seconds  = 300
+
+      parameter {
+        name   = "allowDowngrade"
+        values = ["false"]
+      }
+    }
   }
 }
