@@ -67,3 +67,8 @@ variable "hour" {
   description = "Maintenance Window Hour (00-23)"
   default     = "unnamed"
 }
+
+variable "ssm_maintenance_window_create_image_role" {
+  description = "IAM role used by CreateImage automation task"
+  default     = "null"
+}
