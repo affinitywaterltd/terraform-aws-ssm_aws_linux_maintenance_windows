@@ -25,6 +25,43 @@ resource "aws_ssm_maintenance_window_target" "default" {
   }
 }
 
+resource "aws_ssm_maintenance_window_task" "default_task_create_image" {
+  count            = "${var.weeks}"
+  window_id        = "${element(aws_ssm_maintenance_window.default.*.id, count.index)}"
+  name             = "create_ami_backup"
+  description      = "Take AMI of instance"
+  task_type        = "AUTOMATION"
+  task_arn         = "AWS-CreateImage"
+  priority         = 10
+  service_role_arn = "${var.role}"
+  max_concurrency  = "${var.mw_concurrency}"
+  max_errors       = "${var.mw_error_rate}"
+
+  task_invocation_parameters {
+    automation_parameters {
+      document_version = "$LATEST"
+
+      parameter {
+        name   = "InstanceId"
+        values = ["{{TARGET_ID}}"]
+      }
+      parameter {
+        name   = "NoReboot"
+        values = ["false"]
+      }
+      parameter {
+        name   = "AutomationAssumeRole"
+        values = ["${var.ssm_maintenance_window_create_image_role}"]
+      }
+    }
+  }
+
+  targets {
+    key    = "WindowTargetIds"
+    values = ["${element(aws_ssm_maintenance_window_target.default.*.id, count.index)}"]
+  }
+}
+
 resource "aws_ssm_maintenance_window_task" "default_task_ena_update" {
   count            = "${var.weeks}"
   window_id        = "${element(aws_ssm_maintenance_window.default.*.id, count.index)}"
@@ -32,7 +69,7 @@ resource "aws_ssm_maintenance_window_task" "default_task_ena_update" {
   description      = "Installs AwsEnaNetworkDriver for snapshotting"
   task_type        = "RUN_COMMAND"
   task_arn         = "AWS-ConfigureAWSPackage"
-  priority         = 10
+  priority         = 20
   service_role_arn = "${var.role}"
   max_concurrency  = "${var.mw_concurrency}"
   max_errors       = "${var.mw_error_rate}"
@@ -68,7 +105,7 @@ resource "aws_ssm_maintenance_window_task" "default_task_pvdriver_update" {
   description      = "Installs AWSPVDriver for snapshotting"
   task_type        = "RUN_COMMAND"
   task_arn         = "AWS-ConfigureAWSPackage"
-  priority         = 20
+  priority         = 30
   service_role_arn = "${var.role}"
   max_concurrency  = "${var.mw_concurrency}"
   max_errors       = "${var.mw_error_rate}"
@@ -104,7 +141,7 @@ resource "aws_ssm_maintenance_window_task" "default_task_updates" {
   description      = "Install YUM Updates"
   task_type        = "RUN_COMMAND"
   task_arn         = "AWS-RunShellScript"
-  priority         = 30
+  priority         = 40
   service_role_arn = "${var.role}"
   max_concurrency  = "${var.mw_concurrency}"
   max_errors       = "${var.mw_error_rate}"
@@ -123,7 +160,7 @@ resource "aws_ssm_maintenance_window_task" "default_task_updates" {
 
       parameter {
         name   = "commands"
-        values = ["sudo yum update-minimal -y --security --exclude=kernel*,mongo*,elastic*"]
+        values = ["sudo yum update-minimal --security -y --exclude=kernel*,mongo*,elastic*,samba*"]
       }
     }
   }
@@ -137,7 +174,7 @@ resource "aws_ssm_maintenance_window_task" "default_task_email_notification" {
   description      = "Send email notification"
   task_type        = "RUN_COMMAND"
   task_arn         = "AWL-SSMEmailNotification"
-  priority         = 40
+  priority         = 50
   service_role_arn = "${var.role}"
   max_concurrency  = "${var.mw_concurrency}"
   max_errors       = "${var.mw_error_rate}"
@@ -164,7 +201,7 @@ resource "aws_ssm_maintenance_window_task" "default_task_ssmagent" {
   description      = "Update SSM Agent"
   task_type        = "RUN_COMMAND"
   task_arn         = "AWS-UpdateSSMAgent"
-  priority         = 50
+  priority         = 60
   service_role_arn = "${var.role}"
   max_concurrency  = "${var.mw_concurrency}"
   max_errors       = "${var.mw_error_rate}"
