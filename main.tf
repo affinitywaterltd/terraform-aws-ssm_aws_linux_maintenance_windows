@@ -1,12 +1,74 @@
 #
 #
+# Pre Window
+#
+#
+resource "aws_ssm_maintenance_window" "default_pre" {
+  count    = "${var.weeks}"
+  name     = "pre_${var.weeks > 1 ? "${var.type}_linux_week-${count.index+1}_${var.day}_${var.hour}00" : "${var.type}_linux_week-${var.week}_${var.day}_${var.hour}00"}"
+  schedule = "${var.weeks > 1 ? "cron(00 ${var.hour} ? 1/3 ${var.day}#${count.index+1} *)" : "cron(00 ${var.hour} ? 1/3 ${var.day}#${var.week} *)"}"
+  duration = "${var.mw_duration}"
+  cutoff   = "${var.mw_cutoff}"
+  schedule_timezone = "Europe/London"
+}
+
+resource "aws_ssm_maintenance_window_target" "default_pre" {
+  count         = "${var.weeks}"
+  window_id     = "${element(aws_ssm_maintenance_window.default_pre.*.id, count.index)}"
+  name = "default"
+  description = "default"
+  resource_type = "INSTANCE"
+  
+  targets {
+    key    = "tag:ssmMaintenanceWindow"
+    values = ["${var.weeks > 1 ? "${var.type}_linux_week-${count.index+1}_${var.day}_${var.hour}00" : "${var.type}_linux_week-${var.week}_${var.day}_${var.hour}00"}"]
+  }
+}
+
+
+resource "aws_ssm_maintenance_window_task" "default_task_start_stopped_instances" {
+  count            = "${var.weeks}"
+  window_id        = "${element(aws_ssm_maintenance_window.default_pre.*.id, count.index)}"
+  name             = "start_stopped_instances"
+  description      = "Start instances that are stopped"
+  task_type        = "AUTOMATION"
+  task_arn         = "AWL-StartStoppedInstances"
+  priority         = 10
+  service_role_arn = "${var.role}"
+  max_concurrency  = "${var.mw_concurrency}"
+  max_errors       = "${var.mw_error_rate}"
+
+  task_invocation_parameters {
+    automation_parameters {
+      document_version = "$LATEST"
+
+      parameter {
+        name   = "TagValue"
+        values = ["${var.weeks > 1 ? "${var.type}_linux_week-${count.index+1}_${var.day}_${var.hour}00" : "${var.type}_linux_week-${var.week}_${var.day}_${var.hour}00"}"]
+      }
+      parameter {
+        name   = "AutomationAssumeRole"
+        values = ["${var.ssm_maintenance_window_start_instance_role}"]
+      }
+    }
+  }
+
+  targets {
+    key    = "WindowTargetIds"
+    values = ["${element(aws_ssm_maintenance_window_target.default_pre.*.id, count.index)}"]
+  }
+}
+
+
+#
+#
 # Update Window
 #
 #
 resource "aws_ssm_maintenance_window" "default" {
   count    = "${var.weeks}"
   name     = "${var.weeks > 1 ? "${var.type}_linux_week-${count.index+1}_${var.day}_${var.hour}00" : "${var.type}_linux_week-${var.week}_${var.day}_${var.hour}00"}"
-  schedule = "${var.weeks > 1 ? "cron(00 ${var.hour} ? 1/3 ${var.day}#${count.index+1} *)" : "cron(00 ${var.hour} ? 1/3 ${var.day}#${var.week} *)"}"
+  schedule = "${var.weeks > 1 ? "cron(30 ${var.hour} ? 1/3 ${var.day}#${count.index+1} *)" : "cron(30 ${var.hour} ? 1/3 ${var.day}#${var.week} *)"}"
   duration = "${var.mw_duration}"
   cutoff   = "${var.mw_cutoff}"
   schedule_timezone = "Europe/London"
@@ -166,7 +228,7 @@ resource "aws_ssm_maintenance_window_task" "default_task_updates" {
   }
 }
 
-
+/*
 resource "aws_ssm_maintenance_window_task" "default_task_email_notification" {
   count            = "${var.weeks}"
   window_id        = "${element(aws_ssm_maintenance_window.default.*.id, count.index)}"
@@ -193,6 +255,7 @@ resource "aws_ssm_maintenance_window_task" "default_task_email_notification" {
     }
   }
 }
+*/
 
 resource "aws_ssm_maintenance_window_task" "default_task_ssmagent" {
   count            = "${var.weeks}"
