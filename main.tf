@@ -228,14 +228,14 @@ resource "aws_ssm_maintenance_window_task" "default_task_updates" {
   }
 }
 
-/*
+
 resource "aws_ssm_maintenance_window_task" "default_task_email_notification" {
   count            = "${var.weeks}"
   window_id        = "${element(aws_ssm_maintenance_window.default.*.id, count.index)}"
   name             = "ssm_email_notification"
   description      = "Send email notification"
   task_type        = "RUN_COMMAND"
-  task_arn         = "AWL-SSMEmailNotification"
+  task_arn         = "AWS-RunShellScript"
   priority         = 50
   service_role_arn = "${var.role}"
   max_concurrency  = "${var.mw_concurrency}"
@@ -251,11 +251,16 @@ resource "aws_ssm_maintenance_window_task" "default_task_email_notification" {
       output_s3_bucket = "${var.s3_bucket}"
       output_s3_key_prefix = "${var.weeks > 1 ? "${var.type}_week-${count.index+1}_${var.day}_${var.hour}00/${var.account}-${var.environment}" : "${var.type}_week-${var.week}_${var.day}_${var.hour}00/${var.account}-${var.environment}" }"
       service_role_arn = "${var.role}"
-      timeout_seconds  = 300
+      timeout_seconds  = 60
+
+      parameter {
+        name   = "commands"
+        values = ["mailx -s `hostname` -r SSM_Patching@affinitywater.co.uk -a ATTACHMENT tariq.hasan@affinitywater.co.uk, chris.saunders@affinitywater.co.uk"]
+      }
     }
   }
 }
-*/
+
 
 resource "aws_ssm_maintenance_window_task" "default_task_ssmagent" {
   count            = "${var.weeks}"
