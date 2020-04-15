@@ -256,7 +256,7 @@ resource "aws_ssm_maintenance_window_task" "default_task_email_notification" {
 
       parameter {
         name   = "commands"
-        values = ["mailx -s `hostname` -r ssm_patching@affinitywater.co.uk -a /var/log/yum.log tariq.hasan@affinitywater.co.uk, chris.saunders@affinitywater.co.uk"]
+        values = ["mailx -s `hostname` -r ssm_patching@affinitywater.co.uk tariq.hasan@affinitywater.co.uk, chris.saunders@affinitywater.co.uk < /var/log/yum.log"]
       }
     }
   }
