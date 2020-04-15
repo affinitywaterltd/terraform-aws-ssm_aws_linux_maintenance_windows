@@ -1,4 +1,3 @@
-
 variable "account" {
   description = "Code for account, defined in TFE (e.g apps)"
   default     = "wholesale"
@@ -7,11 +6,6 @@ variable "account" {
 variable "environment" {
   description = "Code for environment, defined in TFE (e.g uat)"
   default     = "dev"
-}
-
-variable "region" {
-  description = "Code for environment, defined in TFE (e.g uat)"
-  default     = "eu-west-1"
 }
 
 
@@ -24,7 +18,6 @@ variable "s3_bucket" {
   description = "S3 bucket for loggin"
   default     = "aw-ssm-logs"
 }
-
 
 variable "mw_duration" {
   description = "Maintenance Window Duration"
@@ -55,14 +48,17 @@ variable "weeks" {
   description = "Number of weeks to schedule"
   default     = "1"
 }
+
 variable "week" {
   description = "Maintenance Window Week (1-4)"
   default     = "1"
 }
+
 variable "day" {
   description = "Maintenance Window Day (mon-sun)"
   default     = "unnamed"
 }
+
 variable "hour" {
   description = "Maintenance Window Hour (00-23)"
   default     = "unnamed"
@@ -77,3 +73,4 @@ variable "ssm_maintenance_window_start_instance_role" {
   description = "IAM role used by StartStoppedInstances automation task"
   default     = "null"
 }
+
