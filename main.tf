@@ -25,35 +25,31 @@ resource "aws_ssm_maintenance_window_target" "default_pre" {
   resource_type = "INSTANCE"
 
   targets {
-    key    = "tag:ssmMaintenanceWindow"
-    values = [var.weeks > 1 ? "${var.type}_linux_week-${count.index + 1}_${var.day}_${var.hour}00" : "${var.type}_linux_week-${var.week}_${var.day}_${var.hour}00"]
+    key    = "tag-key"
+    values = ["ssmMaintenanceWindow"]
   }
 }
 
-resource "aws_ssm_maintenance_window_task" "default_task_start_stopped_instances" {
+data "aws_lambda_function" "SSM_start_stopped_instances" {
+  function_name = "SSM_start_stopped_instances"
+}
+
+
+resource "aws_ssm_maintenance_window_task" "default_task_lambda_start_stopped_instances" {
   count            = var.weeks
   window_id        = element(aws_ssm_maintenance_window.default_pre.*.id, count.index)
   name             = "start_stopped_instances"
   description      = "Start instances that are stopped"
-  task_type        = "AUTOMATION"
-  task_arn         = "AWL-StartStoppedInstances"
+  task_type        = "LAMBDA"
+  task_arn         = data.aws_lambda_function.SSM_start_stopped_instances.arn
   priority         = 10
   service_role_arn = var.role
   max_concurrency  = var.mw_concurrency
   max_errors       = var.mw_error_rate
 
   task_invocation_parameters {
-    automation_parameters {
-      document_version = "$LATEST"
-
-      parameter {
-        name   = "TagValue"
-        values = [var.weeks > 1 ? "${var.type}_linux_week-${count.index + 1}_${var.day}_${var.hour}00" : "${var.type}_linux_week-${var.week}_${var.day}_${var.hour}00"]
-      }
-      parameter {
-        name   = "AutomationAssumeRole"
-        values = [var.ssm_maintenance_window_start_instance_role]
-      }
+    lambda_parameters  {
+      payload = jsonencode({"ssmMaintenanceWindow" = var.weeks > 1 ? "${var.type}_linux_week-${count.index + 1}_${var.day}_${var.hour}00" : "${var.type}_linux_week-${var.week}_${var.day}_${var.hour}00"})
     }
   }
 
@@ -65,6 +61,7 @@ resource "aws_ssm_maintenance_window_task" "default_task_start_stopped_instances
     )]
   }
 }
+
 
 #
 #
