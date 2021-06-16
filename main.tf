@@ -225,7 +225,7 @@ resource "aws_ssm_maintenance_window_task" "default_task_updates" {
 
       parameter {
         name   = "commands"
-        values = ["sudo yum update-minimal --security -y --skip-broken --exclude=kernel*,mongo*,elastic*,samba*"]
+        values = ["sudo yum update-minimal --security -y --skip-broken --exclude=kernel*,mongo*,elastic*,samba*","sudo yum update -y kernelcare"]
       }
     }
   }
